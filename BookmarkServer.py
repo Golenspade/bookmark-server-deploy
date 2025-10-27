@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 #
 # Bookmark Server - 支持Heroku部署
-# 可以监听配置的端口（通过PORT环境变量）
+# 支持并发请求（多线程）
 
 import os
+import threading
+from socketserver import ThreadingMixIn
 import http.server
 import requests
 from urllib.parse import unquote, parse_qs
@@ -39,6 +41,11 @@ def CheckURI(uri, timeout=5):
             return False
     except requests.RequestException:
         return False
+
+
+class ThreadHTTPServer(ThreadingMixIn, http.server.HTTPServer):
+    """HTTPServer with thread-based concurrency support."""
+    pass
 
 
 class Shortener(http.server.BaseHTTPRequestHandler):
@@ -91,15 +98,15 @@ class Shortener(http.server.BaseHTTPRequestHandler):
             return
 
 if __name__ == '__main__':
-    # 支持PORT环境变量（Heroku需要）
+    # 支持PORT环境变量（Render需要）
     # 如果没有PORT，默认使用8000（本地开发）
     port = int(os.environ.get('PORT', 8000))
     
     server_address = ('', port)
-    httpd = http.server.HTTPServer(server_address, Shortener)
+    httpd = ThreadHTTPServer(server_address, Shortener)  # ← 使用ThreadHTTPServer
     
     print("=" * 50)
-    print("📡 书签服务器启动!")
+    print("📡 书签服务器启动（支持并发）!")
     print("=" * 50)
     print(f"🌐 监听端口: {port}")
     print(f"📝 访问: http://localhost:{port}")
